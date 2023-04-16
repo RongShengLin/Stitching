@@ -47,5 +47,3 @@ def test():
     ldr1 = img[:,:,::-1]
     plt.imshow(ldr1)
     plt.show()
-
-test()
