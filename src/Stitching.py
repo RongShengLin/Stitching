@@ -50,9 +50,9 @@ def Stitch_two(left_image, right_image, shift):
             if np.array_equal(new_image_l[i][j], black_pixel) and not np.array_equal(new_image_r[i][j], black_pixel):
                 new_image_l[i][j] = new_image_r[i][j]
             elif not np.array_equal(new_image_l[i][j], black_pixel) and not np.array_equal(new_image_r[i][j], black_pixel):
-                '''B = (int(new_image_l[i][j][0])*(j-diff) + int(new_image_r[i][j][0])*(width-j))/diff
-                G = (int(new_image_l[i][j][1])*(j-diff) + int(new_image_r[i][j][0])*(width-j))/diff
-                R = (int(new_image_l[i][j][2])*(j-diff) + int(new_image_r[i][j][0])*(width-j))/diff
+                '''B = (int(new_image_l[i][j][0])*(j-diff) + int(new_image_r[i][j][0])*(width-j))/(width - diff)
+                G = (int(new_image_l[i][j][1])*(j-diff) + int(new_image_r[i][j][1])*(width-j))/(width - diff)
+                R = (int(new_image_l[i][j][2])*(j-diff) + int(new_image_r[i][j][2])*(width-j))/(width - diff)
                 new_image_l[i][j] = np.array([B, G, R])
                 print(new_image_l[i][j])
                 print("----------")'''
