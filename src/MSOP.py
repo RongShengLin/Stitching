@@ -11,14 +11,21 @@ ratio = [0.06, 0.67, 0.27]
 def find_possible_feature(F, height, width, n, E, Eliminating_edge = True):
     #find 3 * 3 max and above 10
     possible_feature = []
-    for i in range(1, height - 1):
-        for j in range(1, width - 1):
-            m = np.amax(F[i - 1 : i + 2, j - 1 : j + 2])
-            if m == F[i][j] and m > 10:
-                if not Eliminating_edge or E[i][j] < (11 ** 2) / 10:
-                    origin = [i, j, n]
-                    possible_feature.append([i, j, F[i, j], origin])
-    #Sub-pixel refinement
+    three_to_three = [F[0:height-2, 0:width-2], F[0:height-2, 1:width-1], F[0:height-2, 2:width],
+                     F[1:height-1, 0:width-2], F[1:height-1, 1:width-1], F[1:height-1, 2:width],
+                     F[2:height, 0:width-2], F[2:height, 1:width-1], F[2:height, 2:width]]
+    max_F = np.amax(np.transpose(three_to_three, (1, 2, 0)), axis=2)
+    center_F = F[1:height-1, 1:width-1]
+    larger_than_ten = np.where(center_F > 10, center_F, -1)
+    valid_pos = np.where(max_F == larger_than_ten)
+    x = valid_pos[0]
+    y = valid_pos[1]
+    for k in range(x.shape[0]):
+        i, j = int(x[k]) + 1, int(y[k]) + 1
+        if not Eliminating_edge or E[i][j] < (11 ** 2) / 10:
+            origin = [i, j, n]
+            possible_feature.append([i, j, F[i, j], origin])
+    
     if n == 0:
         return possible_feature
     else:
@@ -68,22 +75,27 @@ def calculate_gradients(P):
 
 def non_maximal_suppression(possible_feature, n = 500, robust = 0.9, ratio = 1):
     possible_feature.sort(key = lambda x: x[2], reverse = True)
+    
+    value = np.zeros(len(possible_feature))
+    x_ax = np.zeros(len(possible_feature))
+    y_ax = np.zeros(len(possible_feature))
+    for i in range(len(possible_feature)):
+        x_ax[i] = possible_feature[i][0]
+        y_ax[i] = possible_feature[i][1]
+        value[i] = possible_feature[i][2]
+    
     radius = []
     first_dot = possible_feature[0]
     radius.append([first_dot[0], first_dot[1], float('inf'), first_dot[3]])
-    for i in tqdm(range(1, round(len(possible_feature) * ratio))):
-        neighbor = []
-        for j in range(i):
-            if possible_feature[i][2] < possible_feature[j][2] * robust:
-                neighbor.append(j)
-        if len(neighbor) == 0:
+    for i in range(1, round(len(possible_feature) * ratio)):
+        n_value = value[:i] * robust
+        neighbor = np.where(n_value > value[i])
+        if neighbor[0].shape[0] == 0:
             radius.append([possible_feature[i][0], possible_feature[i][1], float('inf'), possible_feature[i][3]])
             continue
         r_min = float('inf')
-        for j in neighbor:
-            r = math.sqrt((possible_feature[i][0] - possible_feature[j][0]) ** 2 + (possible_feature[i][1] - possible_feature[j][1]) ** 2)
-            if r_min > r:
-                r_min = r
+        r = np.sqrt((x_ax[i] - x_ax[neighbor]) ** 2 + (y_ax[i] - y_ax[neighbor]) ** 2)
+        r_min = np.min(r)
         radius.append([possible_feature[i][0], possible_feature[i][1], r_min, possible_feature[i][3]])
     return radius
 
@@ -138,6 +150,7 @@ def feature_descriptor(x, y, s, P_l, select_features, x_to_scale, y_to_scale):
     #print(feature)
     select_features.append(np.array(feature))
     
+    ax = plt.gca()
     rect_x = y_to_scale + 20 * pow(2, s) * (theta[0] - theta[1])
     rect_y = x_to_scale - 20 * pow(2, s) * (theta[0] + theta[1])
     rect = Rectangle((rect_x, rect_y), 40 * pow(2, s), 40 * pow(2, s), math.atan2(theta[0], theta[1]) * 180 / math.pi, edgecolor = 'r', fill = False)
@@ -171,8 +184,8 @@ def MSOP(img, num_of_feature = 500, scale = 5):
         #calculate gradients
         G = calculate_gradients(P)
         
-        #cv2.imwrite(f'./{n}_x.jpg', 3* G[:, :, 0])
-        #cv2.imwrite(f'./{n}_y.jpg', 3 * G[:, :, 1])
+        #cv2.imwrite(f'./{n}_x.jpg', G[:, :, 0])
+        #cv2.imwrite(f'./{n}_y.jpg', G[:, :, 1])
 
         #calculate H
         H = calculate_H(G, height, width)
@@ -184,10 +197,11 @@ def MSOP(img, num_of_feature = 500, scale = 5):
         Tr_H = H[:, :, 0, 0] + H[:, :, 1, 1]
         Det_H = H[:, :, 0, 0] * H[:, :, 1, 1] - H[:, :, 1, 0] * H[:, :, 0, 1]
         F[:, :] = Det_H / (Tr_H + delta)
-        E[:, :] = (Tr_H ** 2) / (Det_H + delta)
+        E[:, :] = (Tr_H ** 2) / (Det_H + delta)                                                                                       
         #find possible feature
         possible_feature.extend(find_possible_feature(F, height, width, n, E, Eliminating_edge = True))
         n += 1
+
     #Non_maximal_suppression
     radius = non_maximal_suppression(possible_feature, n = num_of_feature)
     radius.sort(key = lambda x: x[2], reverse = True)
@@ -201,9 +215,6 @@ def MSOP(img, num_of_feature = 500, scale = 5):
     #print(radius)
     
     plt.imshow(img)
-    global ax
-    ax = plt.gca()
-
     i = 0
     select_feature = []
     while i != num_of_feature and i < len(radius):
