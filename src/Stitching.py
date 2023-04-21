@@ -161,11 +161,15 @@ def Stitch():
         images.reverse()
         focal_lengths.reverse()
 
-    # Cylindrical_projection
+    # Cylindrical_projection and featuring detecting
     avg_focal_length = sum(focal_lengths)/len(focal_lengths)
-
+    kp_list = []
+    des_list = []
     for i in range(len(images)):
         images[i] = Cylindrical_projection(images[i], avg_focal_length, focal_lengths[i])
+        kp, des = test_lib.OpenCV_SIFT(cv.cvtColor(images[i], cv.COLOR_RGB2GRAY))
+        kp_list.append(kp)
+        des_list.append(des)
 
     # calculate local shifts and output image size
     images_shifts = [np.array([0, 0])]
@@ -174,11 +178,7 @@ def Stitch():
     y_shift_p = 0
     y_shift_n = 0
     for i in range(len(images)-1):
-        left_gray_image = cv.cvtColor(images[i], cv.COLOR_RGB2GRAY)
-        right_gray_image = cv.cvtColor(images[i+1], cv.COLOR_RGB2GRAY)
-        kp_left, des_left = test_lib.OpenCV_SIFT(left_gray_image)
-        kp_right, des_right = test_lib.OpenCV_SIFT(right_gray_image)
-        matches = test_lib.OpenCV_matcher(kp_left, des_left, cv.cvtColor(images[i], cv.COLOR_BGR2RGB), kp_right, des_right, cv.cvtColor(images[i-1], cv.COLOR_BGR2RGB), 0.5)
+        matches = test_lib.OpenCV_matcher(kp_list[i], des_list[i], cv.cvtColor(images[i], cv.COLOR_BGR2RGB), kp_list[i+1], des_list[i+1], cv.cvtColor(images[i+1], cv.COLOR_BGR2RGB), 0.5)
         shift = RANSAC(matches)
         x_shift = x_shift + shift[0]
         y_shift = y_shift + shift[1]
