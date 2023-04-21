@@ -73,7 +73,7 @@ def RANSAC(matches, loops = 10000, sample_size = 5, threshold = 0.25):
         if num_inliers > best_num_inlier : 
             best_num_inlier = num_inliers
             best_inliers = matches[inliers_index].copy()
-            best_translation = np.array([-mx, -my]).copy()
+            best_translation = np.array([round(-mx), round(-my)]).copy()
 
     #print(best_num_inlier, '/', len(matches))
     return best_translation
@@ -131,6 +131,7 @@ def Stitch():
     # calculate local shifts and output image size
     images_shifts = [np.array([0, 0])]
     x_shift = 0
+    y_shift = 0
     y_shift_p = 0
     y_shift_n = 0
     for i in range(len(images)-1):
@@ -141,8 +142,9 @@ def Stitch():
         matches = test_lib.OpenCV_matcher(kp_left, des_left, cv.cvtColor(images[i], cv.COLOR_BGR2RGB), kp_right, des_right, cv.cvtColor(images[i-1], cv.COLOR_BGR2RGB), 0.5)
         shift = RANSAC(matches)
         x_shift = x_shift + shift[0]
-        y_shift_p = max(y_shift_p, shift[1])
-        y_shift_n = min(y_shift_n, shift[1])
+        y_shift = y_shift + shift[1]
+        y_shift_p = max(y_shift_p, y_shift)
+        y_shift_n = min(y_shift_n, y_shift)
         images_shifts.append(np.array(shift))
 
     new_height, new_width, _ = np.shape(images[0])
@@ -186,8 +188,6 @@ def Stitch():
                 B = (int(L_pixel[0])*(r-j) + int(R_pixel[0])*(j-l))/(r - l)
                 G = (int(L_pixel[1])*(r-j) + int(R_pixel[1])*(j-l))/(r - l)
                 R = (int(L_pixel[2])*(r-j) + int(R_pixel[2])*(j-l))/(r - l)
-                '''if R == G and G == B and B == 166 or B == 184: 
-                    print(i, j, L_pixel, R_pixel)'''
                 output_image[i][j] = np.array([B, G, R])
             elif np.array_equal(L_pixel, black_pixel) and not np.array_equal(R_pixel, black_pixel):
                 output_image[i][j] = R_pixel
@@ -218,12 +218,5 @@ def test():
     plt.show()
     return 
 
-def small_test():
-    arr = np.array([[0, 1], [0, 2], [0, 3]])
-    arr2 = np.array([[0, 1], [0, 2], [0, 3]])
-    output = np.array([arr[index][0] - arr[index][1] for index in range(len(arr))])
-    print((arr*0.6+arr2*0.4)/2)
-
-#small_test()
 #test()
 Stitch()
