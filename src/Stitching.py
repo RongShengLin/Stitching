@@ -37,7 +37,7 @@ def parse_command(argv):
             else : 
                 mask = int(argv[i+1])
                 if mask <= 0: 
-                    print("mask size can't be negative")
+                    print("mask size should positive")
                     tag = 0
                 elif mask >= 20:
                     print("maximum mask size is 20")
