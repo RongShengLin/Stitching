@@ -8,6 +8,43 @@ import numpy.linalg as linalg
 import matplotlib.pyplot as plt
 import test_lib
 
+def parse_command(argv):
+    mask = -1
+    order = 1
+    path = ''
+    tag = 1
+
+    for i in range(len(argv)):
+        if argv[i] == '-o' : 
+            if i == len(argv)-1 : 
+                print("loss order type")
+                tag = 0
+            elif argv[i+1] != '-1' : 
+                print("wrong order")
+                tag = 0
+            else :
+                order = -1
+        elif argv[i] == '-p' : 
+            if i == len(argv)-1 : 
+                print("loss image path")
+                tag = 0
+            else : 
+                path = argv[i+1]
+        elif argv[i] == '-s' : 
+            if i == len(argv)-1 : 
+                print("loss mask size")
+                tag = 0
+            else : 
+                mask = int(argv[i+1])
+                if mask <= 0: 
+                    print("mask size can't be negative")
+                    tag = 0
+                elif mask >= 20:
+                    print("maximum mask size is 20")
+                    tag = 0
+    
+    return path, order, mask, tag
+
 def LoadImages(path):
     images = []
     focal_length = []
@@ -20,9 +57,9 @@ def LoadImages(path):
         focal_length.append(float(tokens[1]))
     return images, focal_length
 
-def Cylindrical_projection(image, focal_length):
+def Cylindrical_projection(image, S, focal_length):
     height, width, _ = np.shape(image)
-    new_height, new_width = height, round(math.atan(width/(focal_length*2))*focal_length*2)
+    new_height, new_width = round(height*S/focal_length), round(math.atan(width/(focal_length*2))*S*2)
     projected_image = np.zeros((new_height, new_width,3), np.uint8)
     '''print("original shape = ", (height, width))
     print("new shape = ", (new_height, new_width))'''
@@ -31,8 +68,8 @@ def Cylindrical_projection(image, focal_length):
         for j in range(new_width):
             _x = j - new_width/2
             _y = i - new_height/2
-            x_ = math.tan(_x/focal_length)*focal_length
-            y_ = (_y/focal_length)*math.sqrt(x_**2+focal_length**2)
+            x_ = math.tan(_x/S)*focal_length
+            y_ = (_y/S)*math.sqrt(x_**2+focal_length**2)
             x = x_ + width/2
             y = y_ + height/2
             base_x = int(np.floor(x))
@@ -110,23 +147,25 @@ def Stitch_two(left_image, right_image, shift):
     return new_image_l
 
 def Stitch():
-    images, focal_lengths = LoadImages(sys.argv[1])
+    path, order, mask_size, tag = parse_command(sys.argv)
+    if tag == 0 : 
+        return 
+    
+    images, focal_lengths = LoadImages(path)
     if len(images) <= 1 : 
         print("number of images isn't enough")
         return 
     
     # default clockwise
-    if len(sys.argv) == 3: 
-        if(sys.argv[2] == 'counterclockwise') :
-            images.reverse()
-            focal_lengths.reverse()
-        else :
-            print("bad argumentation")
-            return
+    if order == -1: 
+        images.reverse()
+        focal_lengths.reverse()
 
     # Cylindrical_projection
+    avg_focal_length = sum(focal_lengths)/len(focal_lengths)
+
     for i in range(len(images)):
-        images[i] = Cylindrical_projection(images[i], focal_lengths[i])
+        images[i] = Cylindrical_projection(images[i], avg_focal_length, focal_lengths[i])
 
     # calculate local shifts and output image size
     images_shifts = [np.array([0, 0])]
@@ -152,6 +191,7 @@ def Stitch():
     new_width = round(new_width + x_shift)
 
     print("new_height =", new_height, "new_width =", new_width)
+
     # calculate global shift
     images_shifts[0][1] = y_shift_n*-1
     accumulate_shift = np.array([0, 0])
@@ -170,30 +210,59 @@ def Stitch():
     black_pixel = np.array([0, 0, 0])
     index = 0
     r = r_offset[index]
+    l = np.floor(images_shifts[index+1][0])
+    mid = round((np.floor(images_shifts[index+1][0])+r)/2)
+    m_l = mid - mask_size
+    m_r = mid + mask_size
     for j in range(new_width):
         if j >= r : 
             if (index+1) < (len(images)-1):
                 index += 1
                 r = r_offset[index]
+                l = np.floor(images_shifts[index+1][0])
+                mid = round((np.floor(images_shifts[index+1][0])+r)/2)
+                m_l = mid - mask_size
+                m_r = mid + mask_size
             else : 
                 r = new_width
         
         for i in range(new_height):
             L_pixel = images[index][i][j]
             R_pixel = images[index+1][i][j]
-            if not np.array_equal(L_pixel, black_pixel) and np.array_equal(R_pixel, black_pixel):
-                output_image[i][j] = L_pixel  
-            elif not np.array_equal(L_pixel, black_pixel) and not np.array_equal(R_pixel, black_pixel):
-                l = np.floor(images_shifts[index+1][0])
-                B = (int(L_pixel[0])*(r-j) + int(R_pixel[0])*(j-l))/(r - l)
-                G = (int(L_pixel[1])*(r-j) + int(R_pixel[1])*(j-l))/(r - l)
-                R = (int(L_pixel[2])*(r-j) + int(R_pixel[2])*(j-l))/(r - l)
-                output_image[i][j] = np.array([B, G, R])
-            elif np.array_equal(L_pixel, black_pixel) and not np.array_equal(R_pixel, black_pixel):
-                output_image[i][j] = R_pixel
+
+            if mask_size == -1:
+                if not np.array_equal(L_pixel, black_pixel) and np.array_equal(R_pixel, black_pixel):
+                    output_image[i][j] = L_pixel  
+                elif not np.array_equal(L_pixel, black_pixel) and not np.array_equal(R_pixel, black_pixel):
+                    B = (int(L_pixel[0])*(r-j) + int(R_pixel[0])*(j-l))/(r - l)
+                    G = (int(L_pixel[1])*(r-j) + int(R_pixel[1])*(j-l))/(r - l)
+                    R = (int(L_pixel[2])*(r-j) + int(R_pixel[2])*(j-l))/(r - l)
+                    output_image[i][j] = np.array([B, G, R])
+                elif np.array_equal(L_pixel, black_pixel) and not np.array_equal(R_pixel, black_pixel):
+                    output_image[i][j] = R_pixel
+            else :
+                if j < m_l : 
+                    output_image[i][j] = L_pixel
+                elif j > m_r : 
+                    output_image[i][j] = R_pixel
+                else :
+                    if not np.array_equal(L_pixel, black_pixel) and np.array_equal(R_pixel, black_pixel):
+                        output_image[i][j] = L_pixel  
+                    elif not np.array_equal(L_pixel, black_pixel) and not np.array_equal(R_pixel, black_pixel):
+                        B = (int(L_pixel[0])*(m_r-j) + int(R_pixel[0])*(j-m_l))/(m_r - m_l)
+                        G = (int(L_pixel[1])*(m_r-j) + int(R_pixel[1])*(j-m_l))/(m_r - m_l)
+                        R = (int(L_pixel[2])*(m_r-j) + int(R_pixel[2])*(j-m_l))/(m_r - m_l)
+                        if B == G and G == R and R == 0 : 
+                            print(L_pixel, R_pixel)
+                            print((m_r-j), (j-m_l), (m_r - m_l))
+                        output_image[i][j] = np.array([B, G, R])
+                    elif np.array_equal(L_pixel, black_pixel) and not np.array_equal(R_pixel, black_pixel):
+                        output_image[i][j] = R_pixel
+                    
+
         
-    ldr1 = output_image[:,:,::-1]
-    plt.imshow(ldr1)
+    test = output_image[:,:,::-1]
+    plt.imshow(test)
     plt.show()
     cv.imwrite('stitch_output.jpg', output_image)
     return output_image
