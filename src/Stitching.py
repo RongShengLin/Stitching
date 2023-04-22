@@ -231,9 +231,19 @@ def Stitch():
             print("no feature match")
             return 
         elif len(matches) == 1 : 
-            shift = np.array([matches[0][2]-matches[0][0], matches[0][3] - matches[0][1]])
-        elif len(matches) == 2 : 
-            shift = np.array([(matches[0][2]-matches[0][0]+matches[1][2]-matches[1][0])/2, (matches[0][3] - matches[0][1]+matches[1][3] - matches[1][1])/2])
+            print("1 match")
+            shift = np.array([matches[0][0]-matches[0][2], matches[0][1] - matches[0][3]])
+        elif len(matches) == 2 :
+            print("2 match") 
+            shift = np.array([0, 0])
+            if abs(matches[0][3] - matches[0][1]) > 100 and abs(matches[1][3] - matches[1][1]) > 100 : 
+                print("no feature match")
+            elif abs(matches[0][3] - matches[0][1]) > 100 : 
+                shift = np.array([matches[1][0]-matches[1][2], matches[1][1] - matches[1][3]])
+            elif abs(matches[1][3] - matches[1][1]) > 100 : 
+                shift = np.array([matches[0][0]-matches[0][2], matches[0][1] - matches[0][3]])
+            else : 
+                shift = np.array([(matches[0][0]-matches[0][2]+matches[1][0]-matches[1][2])/2, (matches[0][1] - matches[0][3]+matches[1][1] - matches[1][3])/2])
         else : 
             shift = RANSAC(matches, sample_size=2, threshold = 500)
 
