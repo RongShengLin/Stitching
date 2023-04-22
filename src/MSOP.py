@@ -159,14 +159,13 @@ def feature_descriptor(x, y, s, P_l, select_features, x_to_scale, y_to_scale):
     ax.plot(y_to_scale, x_to_scale, 'r+')
     ax.arrow(y_to_scale, x_to_scale, 20 * pow(2, s) * theta[1], 20 * pow(2, s) * theta[0], color = 'r')
     #plt.show()
-    #exit(0)
     return 
 
 
 def MSOP(img, num_of_feature = 500, scale = 5):
     img_I = ratio[0] * img[:, :, 0] + ratio[1] * img[:, :, 1] + ratio[2] * img[:, :, 2]
     #Guassain blur and rescale
-    print(img_I.shape)
+    #print(img_I.shape)
     P_list = []
     P_list.append(img_I)
     for i in range(1, scale):
@@ -197,7 +196,8 @@ def MSOP(img, num_of_feature = 500, scale = 5):
         Tr_H = H[:, :, 0, 0] + H[:, :, 1, 1]
         Det_H = H[:, :, 0, 0] * H[:, :, 1, 1] - H[:, :, 1, 0] * H[:, :, 0, 1]
         F[:, :] = Det_H / (Tr_H + delta)
-        E[:, :] = (Tr_H ** 2) / (Det_H + delta)                                                                                       
+        E[:, :] = (Tr_H ** 2) / (Det_H + delta)
+        
         #find possible feature
         possible_feature.extend(find_possible_feature(F, height, width, n, E, Eliminating_edge = True))
         n += 1
@@ -231,4 +231,23 @@ def MSOP(img, num_of_feature = 500, scale = 5):
 
 #simple matching
 def simple_matching(f1, f2):
-    return linalg.norm(f1 - f2)
+    return linalg.norm(f1[5:] - f2[5:]) + math.sqrt((f1[2] - f2[2]) ** 2)
+
+def simple_match(features_1, features_2):
+    matches = []
+    for i in range(features_1.shape[0]):
+        first_min = float('inf')
+        first_idx = 0
+        sec_min = float('inf')
+        sec_idx = 0
+        for j in range(features_2.shape[0]):
+            v = simple_matching(features_1[i], features_2[j])
+            if v < first_min:
+                first_min, sec_min = v, first_min
+                first_idx, sec_idx = j, first_idx
+            elif v < sec_min:
+                sec_min = v
+                sec_idx = j
+        if  first_min / sec_min < 0.75:
+            matches.append([features_1[i][1], features_1[i][0], features_2[first_idx][1], features_2[first_idx][0]])
+    return np.array(matches)

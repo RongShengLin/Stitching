@@ -6,7 +6,9 @@ import os
 import sys
 import numpy.linalg as linalg
 import matplotlib.pyplot as plt
-import test_lib
+import MSOP
+from tqdm import tqdm
+#import test_lib
 
 def parse_command(argv):
     mask = -1
@@ -163,13 +165,12 @@ def Stitch():
 
     # Cylindrical_projection and featuring detecting
     avg_focal_length = sum(focal_lengths)/len(focal_lengths)
-    kp_list = []
-    des_list = []
-    for i in range(len(images)):
+    feature_list = []
+    print('finding features')
+    for i in tqdm(range(len(images))):
         images[i] = Cylindrical_projection(images[i], avg_focal_length, focal_lengths[i])
-        kp, des = test_lib.OpenCV_SIFT(cv.cvtColor(images[i], cv.COLOR_RGB2GRAY))
-        kp_list.append(kp)
-        des_list.append(des)
+        feature = MSOP.MSOP(images[i], num_of_feature=700)
+        feature_list.append(feature)
 
     # calculate local shifts and output image size
     images_shifts = [np.array([0, 0])]
@@ -177,9 +178,26 @@ def Stitch():
     y_shift = 0
     y_shift_p = 0
     y_shift_n = 0
-    for i in range(len(images)-1):
-        matches = test_lib.OpenCV_matcher(kp_list[i], des_list[i], cv.cvtColor(images[i], cv.COLOR_BGR2RGB), kp_list[i+1], des_list[i+1], cv.cvtColor(images[i+1], cv.COLOR_BGR2RGB), 0.5)
-        shift = RANSAC(matches)
+    print("matching and shift")
+    for i in tqdm(range(len(images)-1)):
+        matches = MSOP.simple_match(feature_list[i], feature_list[i + 1])
+        #print(matches)
+
+        h = max(images[i].shape[0], images[i+1].shape[0])
+        im1 = cv.copyMakeBorder(images[i], 0, h - images[i].shape[0], 0, 0, cv.BORDER_REPLICATE)
+        im2 = cv.copyMakeBorder(images[i+1], 0, h - images[i+1].shape[0], 0, 0, cv.BORDER_REPLICATE)
+        img_con = cv.hconcat([im1, im2])
+        cl = plt.cm.get_cmap('hsv', matches.shape[0])
+        plt.imshow(img_con)
+        for j in range(matches.shape[0]):
+            x1, y1 = matches[j][0], matches[j][1]
+            x2, y2 = images[i].shape[1] + matches[j][2], matches[j][3]
+            plt.plot(x1, y1, 'r+')
+            plt.plot(x2, y2, 'r+')
+            plt.arrow(x1, y1, x2 - x1, y2 - y1, color=cl(j))
+        plt.show()
+
+        shift = RANSAC(matches, sample_size=3)
         x_shift = x_shift + shift[0]
         y_shift = y_shift + shift[1]
         y_shift_p = max(y_shift_p, y_shift)
@@ -267,7 +285,7 @@ def Stitch():
     cv.imwrite('stitch_output.jpg', output_image)
     return output_image
 
-def test():
+'''def test():
     image_path = sys.argv[1]
     images, focal_lengths = LoadImages(image_path)
     left_image = Cylindrical_projection(images[1], focal_lengths[1])
@@ -285,7 +303,7 @@ def test():
     ldr1 = new_image[:,:,::-1]
     plt.imshow(ldr1)
     plt.show()
-    return 
+    return'''
 
 #test()
-Stitch()
+#Stitch()
