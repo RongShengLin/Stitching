@@ -41,8 +41,8 @@ def parse_command(argv):
                 if mask <= 0: 
                     print("mask size should positive")
                     tag = 0
-                elif mask >= 20:
-                    print("maximum mask size is 20")
+                elif mask > 70:
+                    print("maximum mask size is 70")
                     tag = 0
     
     return path, order, mask, tag
@@ -89,12 +89,27 @@ def Cylindrical_projection(image, S, focal_length):
 
     return projected_image
 
+def translate(feature, shape, S, focal_length):
+    center_y = shape[0]/2
+    center_x = shape[1]/2
+    new_height, new_width = round(shape[0]*S/focal_length), round(math.atan(shape[1]/(focal_length*2))*S*2)
+    for i in range(feature.shape[0]):
+        y = feature[i][0] - center_y 
+        x = feature[i][1] - center_x
+
+        x_ = S*math.atan(x/focal_length)
+        y_ = S*y/math.sqrt(x**2+focal_length**2)
+        feature[i][0] = y_ + new_height/2
+        feature[i][1] = x_ + new_width/2
+
+    return feature
+
 def Random_point(matches, k):
     idx = rnd.sample(range(len(matches)), k)
     point = [matches[i] for i in idx ]
     return np.array(point)
 
-def RANSAC(matches, loops = 10000, sample_size = 5, threshold = 0.25):
+def RANSAC(matches, loops = 10000, sample_size = 5, threshold = 0.5):
     best_num_inlier = 0
     for i in range(loops):
         samples_points = Random_point(matches, sample_size)
@@ -106,6 +121,7 @@ def RANSAC(matches, loops = 10000, sample_size = 5, threshold = 0.25):
 
         distance = np.array([(mx + matches[i][0] - matches[i][2])**2+(my + matches[i][1] - matches[i][3])**2 for i in range(len(matches))])
 
+        min_dis = np.min(distance)
         inliers_index = np.where(distance < threshold)[0]
         num_inliers = len(inliers_index)
 
@@ -168,9 +184,25 @@ def Stitch():
     feature_list = []
     print('finding features')
     for i in tqdm(range(len(images))):
-        images[i] = Cylindrical_projection(images[i], avg_focal_length, focal_lengths[i])
+        '''images[i] = Cylindrical_projection(images[i], avg_focal_length, focal_lengths[i])
+        test = images[i][:,:,::-1]
+        plt.imshow(test)
+        plt.show()'''
         feature = MSOP.MSOP(images[i], num_of_feature=700)
+        '''test = images[i][:,:,::-1]
+        fig, (ax1, ax2) = plt.subplots(2)
+        ax1.imshow(test)
+        for j in range(feature.shape[0]):
+            ax1.plot(feature[j][1], feature[j][0], "r+")'''
+        feature = translate(feature, np.shape(images[i]), avg_focal_length, focal_lengths[i])
         feature_list.append(feature)
+        images[i] = Cylindrical_projection(images[i], avg_focal_length, focal_lengths[i])
+        '''test = images[i][:,:,::-1]
+        ax2.imshow(test)
+        for j in range(feature.shape[0]):
+            ax2.plot(feature[j][1], feature[j][0], "r+")
+        plt.show()'''
+
 
     # calculate local shifts and output image size
     images_shifts = [np.array([0, 0])]
@@ -181,9 +213,7 @@ def Stitch():
     print("matching and shift")
     for i in tqdm(range(len(images)-1)):
         matches = MSOP.simple_match(feature_list[i], feature_list[i + 1])
-        #print(matches)
-
-        h = max(images[i].shape[0], images[i+1].shape[0])
+        '''h = max(images[i].shape[0], images[i+1].shape[0])
         im1 = cv.copyMakeBorder(images[i], 0, h - images[i].shape[0], 0, 0, cv.BORDER_REPLICATE)
         im2 = cv.copyMakeBorder(images[i+1], 0, h - images[i+1].shape[0], 0, 0, cv.BORDER_REPLICATE)
         img_con = cv.hconcat([im1, im2])
@@ -195,9 +225,19 @@ def Stitch():
             plt.plot(x1, y1, 'r+')
             plt.plot(x2, y2, 'r+')
             plt.arrow(x1, y1, x2 - x1, y2 - y1, color=cl(j))
-        plt.show()
+        plt.show()'''
 
-        shift = RANSAC(matches, sample_size=3)
+        if len(matches) == 0 : 
+            print("no feature match")
+            return 
+        elif len(matches) == 1 : 
+            shift = np.array([matches[0][2]-matches[0][0], matches[0][3] - matches[0][1]])
+        elif len(matches) == 2 : 
+            shift = np.array([(matches[0][2]-matches[0][0]+matches[1][2]-matches[1][0])/2, (matches[0][3] - matches[0][1]+matches[1][3] - matches[1][1])/2])
+        else : 
+            shift = RANSAC(matches, sample_size=2, threshold = 500)
+
+        print(shift)
         x_shift = x_shift + shift[0]
         y_shift = y_shift + shift[1]
         y_shift_p = max(y_shift_p, y_shift)
