@@ -213,7 +213,7 @@ def Stitch():
     print("matching and shift")
     for i in tqdm(range(len(images)-1)):
         matches = MSOP.simple_match(feature_list[i], feature_list[i + 1])
-        '''h = max(images[i].shape[0], images[i+1].shape[0])
+        h = max(images[i].shape[0], images[i+1].shape[0])
         im1 = cv.copyMakeBorder(images[i], 0, h - images[i].shape[0], 0, 0, cv.BORDER_REPLICATE)
         im2 = cv.copyMakeBorder(images[i+1], 0, h - images[i+1].shape[0], 0, 0, cv.BORDER_REPLICATE)
         img_con = cv.hconcat([im1, im2])
@@ -225,7 +225,7 @@ def Stitch():
             plt.plot(x1, y1, 'r+')
             plt.plot(x2, y2, 'r+')
             plt.arrow(x1, y1, x2 - x1, y2 - y1, color=cl(j))
-        plt.show()'''
+        plt.show()
 
         if len(matches) == 0 : 
             print("no feature match")
