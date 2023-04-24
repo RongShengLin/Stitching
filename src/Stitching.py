@@ -65,8 +65,47 @@ def Cylindrical_projection(image, S, focal_length):
     projected_image = np.zeros((new_height, new_width,3), np.uint8)
     '''print("original shape = ", (height, width))
     print("new shape = ", (new_height, new_width))'''
+    
+    index_map = np.mgrid[0:new_height, 0:new_width]
+    index_y, index_x = index_map[0], index_map[1]
+    _x = index_map[1] - new_width / 2
+    _y = index_map[0] - new_height / 2
+    x_ = np.tan(_x / S) * focal_length
+    y_ = (_y / S) * np.sqrt(np.power(x_, 2) + focal_length ** 2)
+    x = x_  + width / 2
+    y = y_ + height / 2
+    base_x = np.floor(x).astype('int')
+    base_y = np.floor(y).astype('int')
+    a = x - base_x
+    b = y - base_y
+    idx = np.where(0 <= base_x)
+    base_x, base_y = base_x[idx], base_y[idx]
+    a, b = a[idx], b[idx]
+    index_x, index_y = index_x[idx], index_y[idx]
 
-    for i in range(new_height):
+    idx = np.where(base_x <= width - 2)
+    base_x, base_y = base_x[idx], base_y[idx]
+    a, b = a[idx], b[idx]
+    index_x, index_y = index_x[idx], index_y[idx]
+
+    idy = np.where(0 <= base_y)
+    base_x, base_y = base_x[idy], base_y[idy]
+    a, b = a[idy], b[idy]
+    index_x, index_y = index_x[idy], index_y[idy]
+
+    idy = np.where(base_y <= height - 2)
+    base_x, base_y = base_x[idy], base_y[idy]
+    a, b = a[idy], b[idy]
+    index_x, index_y = index_x[idy], index_y[idy]
+    for c in range(3):
+        pixel_00 = (1 - a) * (1 - b) * image[(base_y, base_x, c)]
+        pixel_01 = a * (1 - b) * image[(base_y, base_x + 1, c)]
+        pixel_11 = a * b * image[(base_y + 1, base_x + 1, c)]
+        pixel_10 = (1 - a) * b * image[(base_y + 1, base_x, c)]
+        projected_image[(index_y, index_x, c)] = pixel_00 + pixel_01 + pixel_11 + pixel_10
+
+
+    '''for i in range(new_height):
         for j in range(new_width):
             _x = j - new_width/2
             _y = i - new_height/2
@@ -86,7 +125,7 @@ def Cylindrical_projection(image, S, focal_length):
             pixel_11 = a*b*image[base_y+1][base_x+1]
             pixel_10 = (1-a)*b*image[base_y+1][base_x]
             projected_image[i][j] = pixel_00 + pixel_01 + pixel_11 + pixel_10
-
+    '''
     return projected_image
 
 def translate(feature, shape, S, focal_length):
@@ -184,11 +223,14 @@ def Stitch():
     feature_list = []
     print('finding features')
     for i in tqdm(range(len(images))):
-        '''images[i] = Cylindrical_projection(images[i], avg_focal_length, focal_lengths[i])
-        test = images[i][:,:,::-1]
-        plt.imshow(test)
-        plt.show()'''
+        #images[i] = Cylindrical_projection(images[i], avg_focal_length, focal_lengths[i])
+        #test = images[i][:,:,::-1]
+        #plt.imshow(test)
+        #plt.show()
         feature = MSOP.MSOP(images[i], num_of_feature=700)
+        plt.savefig(f'features{i}.png')
+        plt.close()
+        #plt.show()
         '''test = images[i][:,:,::-1]
         fig, (ax1, ax2) = plt.subplots(2)
         ax1.imshow(test)

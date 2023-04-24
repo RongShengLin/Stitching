@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import math
 from tqdm import tqdm
 from matplotlib.patches import Rectangle
+import gc
 
 ratio = [0.06, 0.67, 0.27]
 
@@ -73,7 +74,7 @@ def calculate_gradients(P):
     G[:, -1, 1] = P[:, -1] - P[:, -2]
     return G
 
-def non_maximal_suppression(possible_feature, n = 500, robust = 0.9, ratio = 1):
+def non_maximal_suppression(possible_feature, n = 500, robust = 0.9, ratio = 0.5):
     possible_feature.sort(key = lambda x: x[2], reverse = True)
     
     value = np.zeros(len(possible_feature))
@@ -87,14 +88,16 @@ def non_maximal_suppression(possible_feature, n = 500, robust = 0.9, ratio = 1):
     radius = []
     first_dot = possible_feature[0]
     radius.append([first_dot[0], first_dot[1], float('inf'), first_dot[3]])
-    for i in range(1, round(len(possible_feature) * ratio)):
+    print('\nnon maximal suppression')
+    for i in tqdm(range(1, round(len(possible_feature) * ratio))):
         n_value = value[:i] * robust
         neighbor = np.where(n_value > value[i])
         if neighbor[0].shape[0] == 0:
             radius.append([possible_feature[i][0], possible_feature[i][1], float('inf'), possible_feature[i][3]])
             continue
+        last = neighbor[0][-1] + 1
         r_min = float('inf')
-        r = np.sqrt((x_ax[i] - x_ax[neighbor]) ** 2 + (y_ax[i] - y_ax[neighbor]) ** 2)
+        r = np.sqrt(np.square(x_ax[i] - x_ax[:last]) + np.square(y_ax[i] - y_ax[:last]))
         r_min = np.min(r)
         radius.append([possible_feature[i][0], possible_feature[i][1], r_min, possible_feature[i][3]])
     return radius
@@ -118,7 +121,7 @@ def feature_descriptor(x, y, s, P_l, select_features, x_to_scale, y_to_scale):
     #print(height, width)
     x1, y1, x2, y2 = rectan(x, y, theta)
     if 0 > x1 or 0 > y1 or x2 >= height or y2 >= width:
-        return
+        return False
 
     #find rotation matrix
     M = cv2.getRotationMatrix2D((x - x1, y - y1), - math.atan2(theta[0], theta[1]) * 180 / math.pi, scale=1)
@@ -138,7 +141,7 @@ def feature_descriptor(x, y, s, P_l, select_features, x_to_scale, y_to_scale):
     P_r_G = cv2.GaussianBlur(P_r, (3, 3), 2)
     #rescale
     P_five_scale = cv2.resize(P_r_G, (8, 8))
-    
+
     #ax3.imshow(P_five_scale)
     #plt.show()
     
@@ -159,11 +162,12 @@ def feature_descriptor(x, y, s, P_l, select_features, x_to_scale, y_to_scale):
     ax.plot(y_to_scale, x_to_scale, 'r+')
     ax.arrow(y_to_scale, x_to_scale, 20 * pow(2, s) * theta[1], 20 * pow(2, s) * theta[0], color = 'r')
     #plt.show()
-    return 
+    return True
 
 
 def MSOP(img, num_of_feature = 500, scale = 5):
     img_I = ratio[0] * img[:, :, 0] + ratio[1] * img[:, :, 1] + ratio[2] * img[:, :, 2]
+    #img_I = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     #Guassain blur and rescale
     #print(img_I.shape)
     P_list = []
@@ -203,51 +207,61 @@ def MSOP(img, num_of_feature = 500, scale = 5):
         n += 1
 
     #Non_maximal_suppression
-    radius = non_maximal_suppression(possible_feature, n = num_of_feature)
-    radius.sort(key = lambda x: x[2], reverse = True)
-    #i = 0
-    #plt.imshow(img)
-    #while i != num_of_feature and i < len(radius):
-    #    plt.plot(possible_feature[i][1], possible_feature[i][0], 'r+')
-    #    print(l[2])
-    #    i += 1
-    #plt.show()
-    #print(radius)
-    
-    plt.imshow(img)
-    i = 0
     select_feature = []
-    while i != num_of_feature and i < len(radius):
+    radius = non_maximal_suppression(possible_feature, n = num_of_feature)
+    print('\nfinish non maximal suppression')
+    radius.sort(key = lambda x: x[2], reverse = True)
+
+    plt.imshow(img)
+    i, j = 0, 0
+    while j != num_of_feature and i < len(radius):
         #plt.plot(radius[i][1], radius[i][0], 'r+')
         #print(l[2])
         #descriptor
         x, y = radius[i][0], radius[i][1]
         x_o, y_o, s = radius[i][3]
-        feature_descriptor(x_o, y_o, s, P_list[s], select_feature, x, y)
+        if feature_descriptor(x_o, y_o, s, P_list[s], select_feature, x, y):
+            j += 1
         i += 1
-    plt.show()
+    #plt.show()
     #print(select_feature)
     return np.array(select_feature)
 
 #simple matching
 def simple_matching(f1, f2):
-    return linalg.norm(f1[5:] - f2[5:]) + math.sqrt((f1[2] - f2[2]) ** 2)
+    s1 = np.concatenate((np.array([1e-2 * f1[0], f1[2]]), f1[5:]))
+    s2 = np.concatenate((np.array([1e-2 * f2[0], f2[2]]), f2[5:]))
+    return linalg.norm(s1 - s2)
 
 def simple_match(features_1, features_2):
     matches = []
+    f1_f2_min = np.full((features_1.shape[0], 2), float('inf'))
+    f1_f2_ind = np.zeros((features_1.shape[0], 2))
     for i in range(features_1.shape[0]):
-        first_min = float('inf')
-        first_idx = 0
-        sec_min = float('inf')
-        sec_idx = 0
         for j in range(features_2.shape[0]):
             v = simple_matching(features_1[i], features_2[j])
-            if v < first_min:
-                first_min, sec_min = v, first_min
-                first_idx, sec_idx = j, first_idx
-            elif v < sec_min:
-                sec_min = v
-                sec_idx = j
-        if  first_min / sec_min < 0.75:
-            matches.append([features_1[i][1], features_1[i][0], features_2[first_idx][1], features_2[first_idx][0]])
+            if v < f1_f2_min[i][0]:
+                f1_f2_min[i][0], f1_f2_min[i][1] = v, f1_f2_min[i][0]
+                f1_f2_ind[i][0], f1_f2_ind[i][1] = j, f1_f2_ind[i][0]
+            elif v < f1_f2_min[i][1]:
+                f1_f2_min[i][1] = v
+                f1_f2_ind[i][1] = j
+
+    print()
+    for j in range(features_2.shape[0]):
+        f2_f1_min = [float('inf'), float('inf')]
+        f2_f1_ind = [0, 0]
+        for i in range(features_1.shape[0]):
+            v = simple_matching(features_1[i], features_2[j])
+            if v < f2_f1_min[0]:
+                f2_f1_min[0], f2_f1_min[1] = v, f2_f1_min[0]
+                f2_f1_ind[0], f2_f1_ind[1] = i, f2_f1_ind[0]
+            elif v < f2_f1_min[1]:
+                f2_f1_min[1] = v
+                f2_f1_ind[1] = i
+        if f1_f2_ind[f2_f1_ind[0]][0] == j:
+            d2 = min(f1_f2_min[f2_f1_ind[0]][1], f2_f1_min[1])
+            if f2_f1_min[0] / d2 < 0.85 and f2_f1_min[0] <= float('inf'):
+                print(f2_f1_min[0], features_1[f2_f1_ind[0]][1], features_1[f2_f1_ind[0]][0])
+                matches.append([features_1[f2_f1_ind[0]][1], features_1[f2_f1_ind[0]][0], features_2[j][1], features_2[j][0]])
     return np.array(matches)
