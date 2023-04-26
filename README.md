@@ -9,6 +9,9 @@ python3 hw2.py [-p] [directory] [-s] [mask_size] [-o] [-1]
   * -p : images 所在的 directory
   * -s : linear blending with constant width 的 mask size，0 $<$ mask size $\le$ 50。default 為 -1 ，若為 -1 則使用 linear blending
   * -o : 若 image 的順序是逆時針則需要加上 "-o -1"，default 為順時針 
+  
+  
+* 額外套件:opencv-python/matplotlib/numpy/tqdm
 
 * requirement 
 
