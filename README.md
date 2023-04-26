@@ -1,5 +1,8 @@
 # Readme
 
+* 以下資料夾路徑皆相對於hw2.py(hw2.py位於code資料夾內)
+* 在hw2.py所在位置執行
+
 ```shell
 python3 hw2.py [-p] [directory] [-s] [mask_size] [-o] [-1]
 ```
