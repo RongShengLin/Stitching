@@ -42,7 +42,7 @@ python3 hw2.py [-p] [directory] [-s] [mask_size] [-o] [-1]
   
 
 * ```shell
-  python3 crop.py -p ../data/stitch_origin.png -y 400 -h1 76 -h2 2907
+  python3 crop.py -p ../result_file/stitch_origin.png -y 400 -h1 76 -h2 2907
   ```
 
   * 這行 code 會產生 crop 的 result 存在 ../result_file/stitch_crop.png
