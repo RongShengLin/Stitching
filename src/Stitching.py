@@ -374,7 +374,7 @@ def Stitch():
     test = output_image[:,:,::-1]
     plt.imshow(test)
     plt.show()
-    cv.imwrite('stitch_output.jpg', output_image)
+    cv.imwrite('stitch_origin.jpg', output_image)
     return output_image
 
 '''def test():
