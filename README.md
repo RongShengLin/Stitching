@@ -46,7 +46,7 @@ python3 hw2.py [-p] [directory] [-s] [mask_size] [-o] [-1]
   ```
 
   * 這行 code 會產生 crop 的 result 存在 ../result_file/stitch_crop.png
-  * 由於 stitch_origin.jpg  太大，github 上沒有此 image 所以需要先 run 一次 hw2.py 的 command 或是從下面的連結下載 
+  * 由於 stitch_origin.png  太大，github 上沒有此 image 所以需要先 run 一次 hw2.py 的 command 或是從下面的連結下載 
 * Result
   * [stitch_origin.jpg](https://drive.google.com/file/d/1ecNLq5LF08QRznbc601VFDurU7OrPemq/view?usp=sharing)
   * [stitch_crop.jpg](https://drive.google.com/file/d/1PRwAjn21iteifR2fLN2gJdw2GiOyAjpx/view?usp=sharing)
