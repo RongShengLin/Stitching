@@ -33,19 +33,19 @@ python3 hw2.py [-p] [directory] [-s] [mask_size] [-o] [-1]
     ```
 
 * ```shell
-  python3 hw2.py -p ../data6 -s 30
+  python3 hw2.py -p ../data -s 30
   ```
 
   * 這行 command 會得到沒有 crop 的 result
-  * 大概需要 10 分鐘才會跑出結果並存在 ../result_file/stitch_origin.jpg 
+  * 大概需要 10 分鐘才會跑出結果並存在 ../result_file/stitch_origin.png 
 
   
 
 * ```shell
-  python3 crop.py -p ../data6/stitch_origin.jpg -y 400 -h1 76 -h2 2907
+  python3 crop.py -p ../data/stitch_origin.png -y 400 -h1 76 -h2 2907
   ```
 
-  * 這行 code 會產生 crop 的 result 存在 stitch_crop.jpg
+  * 這行 code 會產生 crop 的 result 存在 ../result_file/stitch_crop.png
   * 由於 stitch_origin.jpg  太大，github 上沒有此 image 所以需要先 run 一次 hw2.py 的 command 或是從下面的連結下載 
 * Result
   * [stitch_origin.jpg](https://drive.google.com/file/d/1ecNLq5LF08QRznbc601VFDurU7OrPemq/view?usp=sharing)
