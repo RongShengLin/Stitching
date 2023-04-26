@@ -31,7 +31,7 @@ python3 hw2.py [-p] [directory] [-s] [mask_size] [-o] [-1]
   ```
 
   * 這行 command 會得到沒有 crop 的 result
-  * 大概需要 10 分鐘才會跑出結果並存在 stitch_origin.jpg 
+  * 大概需要 10 分鐘才會跑出結果並存在 ../result_file/stitch_origin.jpg 
 
   
 
