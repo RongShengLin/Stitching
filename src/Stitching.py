@@ -10,51 +10,55 @@ import MSOP
 from tqdm import tqdm
 #import test_lib
 
-def parse_command(argv):
-    mask = -1
-    order = 1
-    path = ''
-    tag = 1
+# def parse_command(argv):
+#     mask = -1
+#     order = 1
+#     path = ''
+#     tag = 1
 
-    for i in range(len(argv)):
-        if argv[i] == '-o' : 
-            if i == len(argv)-1 : 
-                print("loss order type")
-                tag = 0
-            elif argv[i+1] != '-1' : 
-                print("wrong order")
-                tag = 0
-            else :
-                order = -1
-        elif argv[i] == '-p' : 
-            if i == len(argv)-1 : 
-                print("loss image path")
-                tag = 0
-            else : 
-                path = argv[i+1]
-        elif argv[i] == '-s' : 
-            if i == len(argv)-1 : 
-                print("loss mask size")
-                tag = 0
-            else : 
-                mask = int(argv[i+1])
-                if mask <= 0: 
-                    print("mask size should positive")
-                    tag = 0
-                elif mask > 70:
-                    print("maximum mask size is 70")
-                    tag = 0
+#     for i in range(len(argv)):
+#         if argv[i] == '-o' : 
+#             if i == len(argv)-1 : 
+#                 print("loss order type")
+#                 tag = 0
+#             elif argv[i+1] != '-1' : 
+#                 print("wrong order")
+#                 tag = 0
+#             else :
+#                 order = -1
+#         elif argv[i] == '-p' : 
+#             if i == len(argv)-1 : 
+#                 print("loss image path")
+#                 tag = 0
+#             else : 
+#                 path = argv[i+1]
+#         elif argv[i] == '-s' : 
+#             if i == len(argv)-1 : 
+#                 print("loss mask size")
+#                 tag = 0
+#             else :
+#                 mask = int(argv[i+1])
+#                 if mask <= 0: 
+#                     print("mask size should positive")
+#                     tag = 0
+#                 elif mask > 70:
+#                     print("maximum mask size is 70")
+#                     tag = 0
     
-    return path, order, mask, tag
+#     return path, order, mask, tag
 
 def LoadImages(path):
     images = []
     focal_length = []
-    with open(os.path.join(path, 'list.txt')) as f:
+    with open(path) as f:
         content = f.readlines()
     for line in content:
         tokens = line.split()
-        img = cv.imread(os.path.join(path, tokens[0]))
+        img_name = tokens[0]
+        if not os.path.isfile(img_name):
+            print(img_name, "is not a file.", file=sys.stderr)
+            exit(0)
+        img = cv.imread(img_name)
         images.append(img)
         focal_length.append(float(tokens[1]))
     return images, focal_length
@@ -63,8 +67,8 @@ def Cylindrical_projection(image, S, focal_length):
     height, width, _ = np.shape(image)
     new_height, new_width = round(height*S/focal_length), round(math.atan(width/(focal_length*2))*S*2)
     projected_image = np.zeros((new_height, new_width,3), np.uint8)
-    '''print("original shape = ", (height, width))
-    print("new shape = ", (new_height, new_width))'''
+    # print("original shape = ", (height, width))
+    # print("new shape = ", (new_height, new_width))
     
     index_map = np.mgrid[0:new_height, 0:new_width]
     index_y, index_x = index_map[0], index_map[1]
@@ -105,27 +109,27 @@ def Cylindrical_projection(image, S, focal_length):
         projected_image[(index_y, index_x, c)] = pixel_00 + pixel_01 + pixel_11 + pixel_10
 
 
-    '''for i in range(new_height):
-        for j in range(new_width):
-            _x = j - new_width/2
-            _y = i - new_height/2
-            x_ = math.tan(_x/S)*focal_length
-            y_ = (_y/S)*math.sqrt(x_**2+focal_length**2)
-            x = x_ + width/2
-            y = y_ + height/2
-            base_x = int(np.floor(x))
-            base_y = int(np.floor(y))
+    # for i in range(new_height):
+    #     for j in range(new_width):
+    #         _x = j - new_width/2
+    #         _y = i - new_height/2
+    #         x_ = math.tan(_x/S)*focal_length
+    #         y_ = (_y/S)*math.sqrt(x_**2+focal_length**2)
+    #         x = x_ + width/2
+    #         y = y_ + height/2
+    #         base_x = int(np.floor(x))
+    #         base_y = int(np.floor(y))
 
-            if(base_x < 0 or base_x > width-2 or base_y < 0 or base_y > height-2) : continue
+    #         if(base_x < 0 or base_x > width-2 or base_y < 0 or base_y > height-2) : continue
             
-            a = x - base_x
-            b = y - base_y
-            pixel_00 = (1-a)*(1-b)*image[base_y][base_x]
-            pixel_01 = a*(1-b)*image[base_y][base_x+1]
-            pixel_11 = a*b*image[base_y+1][base_x+1]
-            pixel_10 = (1-a)*b*image[base_y+1][base_x]
-            projected_image[i][j] = pixel_00 + pixel_01 + pixel_11 + pixel_10
-    '''
+    #         a = x - base_x
+    #         b = y - base_y
+    #         pixel_00 = (1-a)*(1-b)*image[base_y][base_x]
+    #         pixel_01 = a*(1-b)*image[base_y][base_x+1]
+    #         pixel_11 = a*b*image[base_y+1][base_x+1]
+    #         pixel_10 = (1-a)*b*image[base_y+1][base_x]
+    #         projected_image[i][j] = pixel_00 + pixel_01 + pixel_11 + pixel_10
+    #
     return projected_image
 
 def translate(feature, shape, S, focal_length):
@@ -193,8 +197,8 @@ def Stitch_two(left_image, right_image, shift):
                 G = (int(new_image_l[i][j][1])*(width-j) + int(new_image_r[i][j][1])*(j-diff))/(width - diff)
                 R = (int(new_image_l[i][j][2])*(width-j) + int(new_image_r[i][j][2])*(j-diff))/(width - diff)
                 new_image_l[i][j] = np.array([B, G, R])
-                '''print(new_image_l[i][j])
-                print("----------")'''
+                # print(new_image_l[i][j])
+                # print("----------")
                 #new_image_l[i][j] = (new_image_l[i][j] + new_image_r[i][j])/2
                 #new_image_l[i][j] = new_image_r[i][j]
                 #pass
@@ -203,18 +207,16 @@ def Stitch_two(left_image, right_image, shift):
 
     return new_image_l
 
-def Stitch():
-    path, order, mask_size, tag = parse_command(sys.argv)
-    if tag == 0 : 
-        return 
+def Stitch(input_list, order, mask_size, output_dirname, show_feature, feature_dir, show_match):
+    # path, order, mask_size, tag = parse_command(sys.argv)
     
-    images, focal_lengths = LoadImages(path)
-    if len(images) <= 1 : 
+    images, focal_lengths = LoadImages(input_list)
+    if len(images) <= 1 :
         print("number of images isn't enough")
-        return 
+        return
     
     # default clockwise
-    if order == -1: 
+    if order:
         images.reverse()
         focal_lengths.reverse()
 
@@ -227,23 +229,24 @@ def Stitch():
         #test = images[i][:,:,::-1]
         #plt.imshow(test)
         #plt.show()
-        feature = MSOP.MSOP(images[i], num_of_feature=700)
-        plt.savefig(f'features{i}.png')
-        plt.close()
+        feature = MSOP.MSOP(images[i], show_feature, num_of_feature=700)
+        if show_feature:
+            plt.savefig(os.path.join(feature_dir, f'features{i}.png'))
+            plt.close()
         #plt.show()
-        '''test = images[i][:,:,::-1]
-        fig, (ax1, ax2) = plt.subplots(2)
-        ax1.imshow(test)
-        for j in range(feature.shape[0]):
-            ax1.plot(feature[j][1], feature[j][0], "r+")'''
+        # test = images[i][:,:,::-1]
+        # fig, (ax1, ax2) = plt.subplots(2)
+        # ax1.imshow(test)
+        # for j in range(feature.shape[0]):
+        #     ax1.plot(feature[j][1], feature[j][0], "r+")
         feature = translate(feature, np.shape(images[i]), avg_focal_length, focal_lengths[i])
         feature_list.append(feature)
         images[i] = Cylindrical_projection(images[i], avg_focal_length, focal_lengths[i])
-        '''test = images[i][:,:,::-1]
-        ax2.imshow(test)
-        for j in range(feature.shape[0]):
-            ax2.plot(feature[j][1], feature[j][0], "r+")
-        plt.show()'''
+        # test = images[i][:,:,::-1]
+        # ax2.imshow(test)
+        # for j in range(feature.shape[0]):
+        #     ax2.plot(feature[j][1], feature[j][0], "r+")
+        # plt.show()
 
 
     # calculate local shifts and output image size
@@ -255,19 +258,20 @@ def Stitch():
     print("matching and shift")
     for i in tqdm(range(len(images)-1)):
         matches = MSOP.simple_match(feature_list[i], feature_list[i + 1])
-        h = max(images[i].shape[0], images[i+1].shape[0])
-        im1 = cv.copyMakeBorder(images[i], 0, h - images[i].shape[0], 0, 0, cv.BORDER_REPLICATE)
-        im2 = cv.copyMakeBorder(images[i+1], 0, h - images[i+1].shape[0], 0, 0, cv.BORDER_REPLICATE)
-        img_con = cv.hconcat([im1, im2])
-        cl = plt.cm.get_cmap('hsv', matches.shape[0])
-        plt.imshow(img_con)
-        for j in range(matches.shape[0]):
-            x1, y1 = matches[j][0], matches[j][1]
-            x2, y2 = images[i].shape[1] + matches[j][2], matches[j][3]
-            plt.plot(x1, y1, 'r+')
-            plt.plot(x2, y2, 'r+')
-            plt.arrow(x1, y1, x2 - x1, y2 - y1, color=cl(j))
-        plt.show()
+        if show_match:
+            h = max(images[i].shape[0], images[i+1].shape[0])
+            im1 = cv.copyMakeBorder(images[i], 0, h - images[i].shape[0], 0, 0, cv.BORDER_REPLICATE)
+            im2 = cv.copyMakeBorder(images[i+1], 0, h - images[i+1].shape[0], 0, 0, cv.BORDER_REPLICATE)
+            img_con = cv.hconcat([im1, im2])
+            cl = plt.cm.get_cmap('hsv', matches.shape[0])
+            plt.imshow(img_con)
+            for j in range(matches.shape[0]):
+                x1, y1 = matches[j][0], matches[j][1]
+                x2, y2 = images[i].shape[1] + matches[j][2], matches[j][3]
+                plt.plot(x1, y1, 'r+')
+                plt.plot(x2, y2, 'r+')
+                plt.arrow(x1, y1, x2 - x1, y2 - y1, color=cl(j))
+            plt.savefig(os.path.join(feature_dir, f'features_match{i}.png'))
 
         if len(matches) == 0 : 
             print("no feature match")
@@ -289,7 +293,7 @@ def Stitch():
         else : 
             shift = RANSAC(matches, sample_size=2, threshold = 500)
 
-        print(shift)
+        # print(shift)
         x_shift = x_shift + shift[0]
         y_shift = y_shift + shift[1]
         y_shift_p = max(y_shift_p, y_shift)
@@ -311,9 +315,9 @@ def Stitch():
         shift_matrix = np.float32([[1, 0, images_shifts[i][0]], [0, 1, images_shifts[i][1]]])
         r_offset.append(images_shifts[i][0] + np.shape(images[i])[1])
         images[i] = cv.warpAffine(images[i], shift_matrix, (new_width, new_height))
-        '''ldr1 = images[i][:,:,::-1]
-        plt.imshow(ldr1)
-        plt.show()'''
+        # ldr1 = images[i][:,:,::-1]
+        # plt.imshow(ldr1)
+        # plt.show()
 
     # stitch all image
     output_image = np.zeros((new_height, new_width,3), np.uint8)
@@ -371,31 +375,31 @@ def Stitch():
                     
 
         
-    test = output_image[:,:,::-1]
-    plt.imshow(test)
-    plt.show()
-    cv.imwrite('stitch_origin.jpg', output_image)
+    # test = output_image[:,:,::-1]
+    # plt.imshow(test)
+    # plt.show()
+    cv.imwrite(os.path.join(output_dirname, 'stitch_origin.jpg'), output_image)
     return output_image
 
-'''def test():
-    image_path = sys.argv[1]
-    images, focal_lengths = LoadImages(image_path)
-    left_image = Cylindrical_projection(images[1], focal_lengths[1])
-    right_image = Cylindrical_projection(images[0], focal_lengths[0])
-    left_gray_image = cv.cvtColor(left_image, cv.COLOR_RGB2GRAY)
-    right_gray_image = cv.cvtColor(right_image, cv.COLOR_RGB2GRAY)
+# def test():
+#     image_path = sys.argv[1]
+#     images, focal_lengths = LoadImages(image_path)
+#     left_image = Cylindrical_projection(images[1], focal_lengths[1])
+#     right_image = Cylindrical_projection(images[0], focal_lengths[0])
+#     left_gray_image = cv.cvtColor(left_image, cv.COLOR_RGB2GRAY)
+#     right_gray_image = cv.cvtColor(right_image, cv.COLOR_RGB2GRAY)
 
-    kp_left, des_left = test_lib.OpenCV_SIFT(left_gray_image)
-    kp_right, des_right = test_lib.OpenCV_SIFT(right_gray_image)
-    matches = test_lib.OpenCV_matcher(kp_left, des_left, cv.cvtColor(left_image, cv.COLOR_BGR2RGB), kp_right, des_right, cv.cvtColor(right_image, cv.COLOR_BGR2RGB), 0.5)
-    translation = RANSAC(matches)
+#     kp_left, des_left = test_lib.OpenCV_SIFT(left_gray_image)
+#     kp_right, des_right = test_lib.OpenCV_SIFT(right_gray_image)
+#     matches = test_lib.OpenCV_matcher(kp_left, des_left, cv.cvtColor(left_image, cv.COLOR_BGR2RGB), kp_right, des_right, cv.cvtColor(right_image, cv.COLOR_BGR2RGB), 0.5)
+#     translation = RANSAC(matches)
     
-    print(translation)
-    new_image = Stitch_two(left_image, right_image, translation)
-    ldr1 = new_image[:,:,::-1]
-    plt.imshow(ldr1)
-    plt.show()
-    return'''
+#     print(translation)
+#     new_image = Stitch_two(left_image, right_image, translation)
+#     ldr1 = new_image[:,:,::-1]
+#     plt.imshow(ldr1)
+#     plt.show()
+#     return
 
 #test()
 #Stitch()

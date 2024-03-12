@@ -8,6 +8,7 @@ from matplotlib.patches import Rectangle
 import gc
 
 ratio = [0.06, 0.67, 0.27]
+show_f = False
 
 def find_possible_feature(F, height, width, n, E, Eliminating_edge = True):
     #find 3 * 3 max and above 10
@@ -153,20 +154,22 @@ def feature_descriptor(x, y, s, P_l, select_features, x_to_scale, y_to_scale):
     #print(feature)
     select_features.append(np.array(feature))
     
-    ax = plt.gca()
-    rect_x = y_to_scale + 20 * pow(2, s) * (theta[0] - theta[1])
-    rect_y = x_to_scale - 20 * pow(2, s) * (theta[0] + theta[1])
-    rect = Rectangle((rect_x, rect_y), 40 * pow(2, s), 40 * pow(2, s), math.atan2(theta[0], theta[1]) * 180 / math.pi, edgecolor = 'r', fill = False)
-    ax.add_patch(rect)
+    if show_f:
+        ax = plt.gca()
+        rect_x = y_to_scale + 20 * pow(2, s) * (theta[0] - theta[1])
+        rect_y = x_to_scale - 20 * pow(2, s) * (theta[0] + theta[1])
+        rect = Rectangle((rect_x, rect_y), 40 * pow(2, s), 40 * pow(2, s), angle=math.atan2(theta[0], theta[1]) * 180 / math.pi, edgecolor = 'r', fill = False)
+        ax.add_patch(rect)
 
-    ax.plot(y_to_scale, x_to_scale, 'r+')
-    ax.arrow(y_to_scale, x_to_scale, 20 * pow(2, s) * theta[1], 20 * pow(2, s) * theta[0], color = 'r')
+        ax.plot(y_to_scale, x_to_scale, 'r+')
+        ax.arrow(y_to_scale, x_to_scale, 20 * pow(2, s) * theta[1], 20 * pow(2, s) * theta[0], color = 'r')
     #plt.show()
     return True
 
 
-def MSOP(img, num_of_feature = 500, scale = 5):
+def MSOP(img, show_feature, num_of_feature = 500, scale = 5):
     img_I = ratio[0] * img[:, :, 0] + ratio[1] * img[:, :, 1] + ratio[2] * img[:, :, 2]
+    show_f = show_feature
     #img_I = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     #Guassain blur and rescale
     #print(img_I.shape)
@@ -211,8 +214,8 @@ def MSOP(img, num_of_feature = 500, scale = 5):
     radius = non_maximal_suppression(possible_feature, n = num_of_feature)
     print('\nfinish non maximal suppression')
     radius.sort(key = lambda x: x[2], reverse = True)
-
-    plt.imshow(img)
+    if show_f:
+        plt.imshow(img)
     i, j = 0, 0
     while j != num_of_feature and i < len(radius):
         #plt.plot(radius[i][1], radius[i][0], 'r+')
@@ -247,7 +250,7 @@ def simple_match(features_1, features_2):
                 f1_f2_min[i][1] = v
                 f1_f2_ind[i][1] = j
 
-    print()
+    # print()
     for j in range(features_2.shape[0]):
         f2_f1_min = [float('inf'), float('inf')]
         f2_f1_ind = [0, 0]
@@ -262,6 +265,6 @@ def simple_match(features_1, features_2):
         if f1_f2_ind[f2_f1_ind[0]][0] == j:
             d2 = min(f1_f2_min[f2_f1_ind[0]][1], f2_f1_min[1])
             if f2_f1_min[0] / d2 < 0.85 and f2_f1_min[0] <= float('inf'):
-                print(f2_f1_min[0], features_1[f2_f1_ind[0]][1], features_1[f2_f1_ind[0]][0])
+                # print(f2_f1_min[0], features_1[f2_f1_ind[0]][1], features_1[f2_f1_ind[0]][0])
                 matches.append([features_1[f2_f1_ind[0]][1], features_1[f2_f1_ind[0]][0], features_2[j][1], features_2[j][0]])
     return np.array(matches)

@@ -1,0 +1,11 @@
+./outside/IMG_01.jpg 2600
+./outside/IMG_02.jpg 2600
+./outside/IMG_03.jpg 2600
+./outside/IMG_04.jpg 2600
+./outside/IMG_05.jpg 2600
+./outside/IMG_06.jpg 2600
+./outside/IMG_07.jpg 2600
+./outside/IMG_08.jpg 2600
+./outside/IMG_09.jpg 2600
+./outside/IMG_10.jpg 2600
+./outside/IMG_11.jpg 2600

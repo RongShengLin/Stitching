@@ -1,52 +1,51 @@
 # Readme
+## 主題
+本次實作image stitiching，通過演算法找出照片的特徵點，並通過特徵點比對及stitching和blending的技術，將圖片串接形成360環繞的照片
+## 實作細節
+首先會使用特徵點偵測找出圖片的特徵點(Harris corner detector或MSOP)，之後進行特徵點的比對確定鄰近兩圖中重疊部分在那些位置，再來會將圖片投射至圓柱座標，經過一定程度的alignment和blending後獲得相接後的圖片
+## Result
+![](./figure/result.png)
+## 執行
+* requirement
 
-* 以下資料夾路徑皆相對於hw2.py(hw2.py位於code資料夾內)
-* 在hw2.py所在位置執行
-
-```shell
-python3 hw2.py [-p] [directory] [-s] [mask_size] [-o] [-1]
-```
-
-* argv
-
-  * -p : images 所在的 directory
-  * -s : linear blending with constant width 的 mask size，0 $<$ mask size $\le$ 50。default 為 -1 ，若為 -1 則使用 linear blending
-  * -o : 若 image 的順序是逆時針則需要加上 "-o -1"，default 為順時針 
-  
-  
-* 額外套件:opencv-python/matplotlib/numpy/tqdm
-
-* requirement 
-
-  * 需要在 images 所在的 directory 加入 list.txt，list.txt 裡面需要有 image file name 與對應的 focal length
+  * 需要先有list.txt，list.txt 裡面需要有image file name與對應的focal length
 
   * Example : 
 
     ```shell
-    image0.jpg 800
-    image1.jpg 850
-    image2.jpg 900
+    ./data/image0.jpg 800
+    ./data/image1.jpg 850
+    ./data/image2.jpg 900
     .
     .
     .
     .
     ```
 
-* ```shell
-  python3 hw2.py -p ../data -s 30
-  ```
 
-  * 這行 command 會得到沒有 crop 的 result
-  * 大概需要 10 分鐘才會跑出結果並存在 ../result_file/stitch_origin.png 
+```shell
+python3 ./src/Image_Stitching.py input [-o OUTPUT] [-m MASK] [-ord | --order| --no-order] [-f | --feature | --no-feature] [-fm | --feature_match | --no-feature_match]
+```
 
+* argv
+
+  * input: image list mentoioned above.(ex: ./parrington/parrington/list.txt)
+  * -o: output image directory.(default is ./result)
+  * -m: mask size of linear blending with constant width, 0 $<$ mask size $\le$ 70.(default is -1, means barely using linear blending)
+  * -ord: If images are counter-clockwise order, then use -ord.(default is False, means clockwiseorder)
+  * -f: save image with features labeled on it.(default is False, and images will save to ./result/features)
+  * -fm: save the features matching result between two images.(default is False, images will save to ./result/features)
   
+  
+* 額外套件:opencv-python/matplotlib/numpy/tqdm
 
+ex:
 * ```shell
-  python3 crop.py -p ../result_file/stitch_origin.png -y 400 -h1 76 -h2 2907
+  python3 ./src/Image_Stitching.py ./parrington/parrington/list.txt -ord
   ```
+It will take some time to finished it.(5-30 min in regard of to image size)
 
-  * 這行 code 會產生 crop 的 result 存在 ../result_file/stitch_crop.png
-  * 由於 stitch_origin.png  太大，github 上沒有此 image 所以需要先 run 一次 hw2.py 的 command 或是從下面的連結下載 
+Some stitching images are too large, so we put some demo images in link below. 
 * Result
   * [stitch_origin.jpg](https://drive.google.com/file/d/1ecNLq5LF08QRznbc601VFDurU7OrPemq/view?usp=sharing)
   * [stitch_crop.jpg](https://drive.google.com/file/d/1PRwAjn21iteifR2fLN2gJdw2GiOyAjpx/view?usp=sharing)
