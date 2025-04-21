@@ -272,6 +272,7 @@ def Stitch(input_list, order, mask_size, output_dirname, show_feature, feature_d
                 plt.plot(x2, y2, 'r+')
                 plt.arrow(x1, y1, x2 - x1, y2 - y1, color=cl(j))
             plt.savefig(os.path.join(feature_dir, f'features_match{i}.png'))
+            plt.close()
 
         if len(matches) == 0 : 
             print("no feature match")

@@ -218,7 +218,8 @@ def MSOP(img, show_feature, num_of_feature = 500, scale = 5):
         plt.imshow(img)
     i, j = 0, 0
     while j != num_of_feature and i < len(radius):
-        #plt.plot(radius[i][1], radius[i][0], 'r+')
+        if show_f:
+            plt.plot(radius[i][1], radius[i][0], 'r+')
         #print(l[2])
         #descriptor
         x, y = radius[i][0], radius[i][1]
